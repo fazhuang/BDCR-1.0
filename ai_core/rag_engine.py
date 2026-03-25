@@ -28,9 +28,9 @@ def analyze_document_with_ai(document_text: str) -> dict:
             "合规性风险": [{"描述": "请配置 API KEY 以启用真实 AI 审查", "建议": "访问 https://aistudio.google.com/ 获取"}]
         }
 
-    # 1. 定义大模型 (Gemini 1.5 Pro)
+    # 1. 定义大模型 (Gemini 2.5 Pro)
     try:
-        llm = ChatGoogleGenerativeAI(model="gemini-1.5-pro", temperature=0.1)
+        llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro", temperature=0.1)
         
         # 2. 定义提示词模板
         prompt_template = PromptTemplate(
