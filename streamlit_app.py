@@ -1,0 +1,118 @@
+import streamlit as st
+import io
+import sys
+import os
+from pypdf import PdfReader
+from docx import Document
+
+# 确保能找到 ai_core 模块
+project_root = os.path.dirname(os.path.abspath(__file__))
+if project_root not in sys.path:
+    sys.path.append(project_root)
+
+from ai_core.rag_engine import analyze_document_with_ai
+
+def extract_text_from_file(file_content: bytes, filename: str) -> str:
+    """从不同格式的文件中提取文本"""
+    text = ""
+    file_extension = filename.split('.')[-1].lower()
+    try:
+        if file_extension == 'pdf':
+            reader = PdfReader(io.BytesIO(file_content))
+            for page in reader.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text + "\n"
+        elif file_extension in ['docx', 'doc']:
+            doc = Document(io.BytesIO(file_content))
+            for para in doc.paragraphs:
+                text += para.text + "\n"
+        else:
+            text = file_content.decode('utf-8', errors='ignore')
+    except Exception as e:
+        st.error(f"文件解析失败: {str(e)}")
+        return ""
+    
+    return text.strip()
+
+st.set_page_config(page_title="AI 智能招标文件审查系统", layout="wide")
+
+st.title("🤖 智能审查大脑 - 招标文件自动诊断")
+st.markdown("通过大语言模型深度理解和 RAG 技术，一键识别标书中的**合规性风险**与**前后逻辑冲突**。")
+
+# --- 侧边栏 ---
+with st.sidebar:
+    st.header("⚙️ 引擎流转状态 (云端单体版)")
+    st.info("✓ 建立文档上传通道")
+    st.info("✓ 后台直连文档解析引擎")
+    st.info("✓ RAG 知识检索系统预热")
+    st.info("✓ LLM 大模型推理就绪")
+
+# --- 主区 ---
+uploaded_file = st.file_uploader("请上传待审查的招标文件 (支持 PDF / Word / TXT 格式)", type=["pdf", "docx", "txt", "doc"])
+
+if uploaded_file is not None:
+    st.success(f"文件加载就绪：{uploaded_file.name}")
+    
+    if st.button("🚀 开始 AI 智能审查"):
+        with st.status(">> 正在启动 AI 审查引擎...", expanded=True) as status:
+            st.write(">> 阶段 1：正在提取分析文档文本...")
+            
+            # 直接在本地调用提取
+            extracted_text = extract_text_from_file(uploaded_file.getvalue(), uploaded_file.name)
+            
+            if not extracted_text:
+                status.update(label="审查失败，无法提取文件文本", state="error", expanded=True)
+            else:
+                st.write(">> 阶段 2：大模型正在进行语义理解与合规推断 (这可能会耗时十秒以上，请耐心等待)...")
+                
+                # 直接调用大模型核心逻辑
+                review_result = analyze_document_with_ai(extracted_text)
+                
+                # 判断是否有报错返回
+                if review_result.get("status") == "error":
+                    status.update(label="审查失败，AI 模型调用异常", state="error", expanded=True)
+                    st.error(review_result.get("message"))
+                    st.write(review_result.get("error_detail"))
+                else:
+                    status.update(label="审查完毕，成功生成结构化报告。", state="complete", expanded=False)
+                    
+                    report = review_result
+                    
+                    st.divider()
+                    st.subheader(f"📊 【{uploaded_file.name}】自动审查诊断报告", divider="red")
+                    
+                    tab1, tab2, tab3 = st.tabs(["🔴 合规风险", "🟡 逻辑异常", "🔵 核心提取信息"])
+                    
+                    with tab1:
+                        risks = report.get("合规性风险", [])
+                        if risks:
+                            st.error(f"AI 识别出 **{len(risks)}** 个合规性风险点（**触及红线，必须整改**）")
+                            for idx, risk in enumerate(risks):
+                                with st.expander(f"⚠️ 风险 {idx+1}: {risk.get('描述', '未知')}", expanded=True):
+                                    st.markdown(f"**⚡ AI 修复建议**：\n{risk.get('建议', '无')}")
+                        else:
+                            st.success("✅ 未发现明显的合规性风险。")
+    
+                    with tab2:
+                        logics = report.get("逻辑错误", [])
+                        if logics:
+                            st.warning(f"AI 识别出 **{len(logics)}** 处前后逻辑或数据自相矛盾")
+                            for idx, logic in enumerate(logics):
+                                with st.expander(f"📌 异常 {idx+1}: {logic.get('描述', '未知')}", expanded=True):
+                                    st.markdown(f"**⚡ AI 修复建议**：\n{logic.get('建议', '无')}")
+                        else:
+                            st.success("✅ 未发现明显的逻辑矛盾。")
+                                    
+                    with tab3:
+                        infos = report.get("核心信息", [])
+                        if infos:
+                            st.info(f"AI 提取了以下关键项目要素：")
+                            for idx, info in enumerate(infos):
+                                st.markdown(f"- **{info.get('描述', '未知')}**：{info.get('建议', '')}")
+                        else:
+                            st.info("暂未提取到具体的要素记录。")
+                            
+                    st.divider()
+                    with st.expander("开发者模式：查看服务端返回的完整 JSON 原始结构"):
+                        st.json(report)
