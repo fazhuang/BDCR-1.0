@@ -2,7 +2,7 @@ import json
 import os
 from dotenv import load_dotenv
 from langchain_core.prompts import PromptTemplate
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
 from langchain_core.output_parsers import JsonOutputParser
 
 # 加载环境变量 (API Key)
@@ -20,17 +20,22 @@ def analyze_document_with_ai(document_text: str) -> dict:
     接收抽取的文档文本，调用 Google Gemini LLM 返回审查结果。
     """
     
-    api_key = os.getenv("GOOGLE_API_KEY")
-    if not api_key or "YOUR_GEMINI_API_KEY" in api_key:
+    api_key = os.getenv("DEEPSEEK_API_KEY")
+    if not api_key or "YOUR_DEEPSEEK_API_KEY" in api_key:
         return {
             "status": "warning",
-            "message": "未检测到有效的 GOOGLE_API_KEY，请在 .env 文件中配置。当前返回 Mock 数据。",
-            "合规性风险": [{"描述": "请配置 API KEY 以启用真实 AI 审查", "建议": "访问 https://aistudio.google.com/ 获取"}]
+            "message": "未检测到有效的 DEEPSEEK_API_KEY，请在 .env 文件中配置。当前返回 Mock 数据。",
+            "合规性风险": [{"描述": "请配置 DeepSeek API KEY 以启用真实 AI 审查", "建议": "访问 https://platform.deepseek.com/ 获取"}]
         }
 
-    # 1. 定义大模型 (Gemini 2.0 Flash - 适配免费计划)
+    # 1. 定义大模型 (DeepSeek-Chat 兼容 OpenAI 接口)
     try:
-        llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.1)
+        llm = ChatOpenAI(
+            api_key=api_key,
+            base_url="https://api.deepseek.com",
+            model="deepseek-chat",
+            temperature=0.1
+        )
         
         # 2. 定义提示词模板
         prompt_template = PromptTemplate(
