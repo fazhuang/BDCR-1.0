@@ -8,12 +8,7 @@ from langchain_core.output_parsers import JsonOutputParser
 # 加载环境变量 (API Key)
 load_dotenv()
 
-# 模拟的检索数据库（未来替换为 Pinecone 等向量数据库查询引擎）
-# 在 Stage 3 中，我们依然保留这个 Mock 知识库，但将其作为上下文注入到真实 LLM 中
-MOCK_KNOWLEDGE_BASE = {
-    "法规": "《中华人民共和国招标投标法》第十八条：招标人不得以不合理的条件限制或者排斥潜在投标人。",
-    "规范": "《内部招标文件编制规范》V2.1：所有涉及金额必须准确无歧义，不能前后矛盾；禁止指定特定品牌。"
-}
+from ai_core.gansu_rules import GANSU_NEGATIVE_LIST, GENERAL_BIDDING_RULES
 
 def analyze_document_with_ai(document_text: str) -> dict:
     """
@@ -37,30 +32,34 @@ def analyze_document_with_ai(document_text: str) -> dict:
             temperature=0.1
         )
         
-        # 2. 定义提示词模板
+        # 2. 升级提示词模板
         prompt_template = PromptTemplate(
-            input_variables=["regulations", "norms", "document"],
+            input_variables=["gansu_rules", "general_rules", "document"],
             template=(
-                "你现在是资深招标代理专家。请根据提供的法律法规：\n{regulations}\n\n"
-                "以及公司内部规范：\n{norms}\n\n"
-                "严格对照审查以下招标文件内容：\n{document}\n\n"
-                "你的任务是找出：\n"
-                "1. 合规性风险（如排他性条款、不合理资格要求、违反招标投标法等）；\n"
-                "2. 逻辑错误（如前后时间矛盾、金额单位不一致、评分标准不严谨等）；\n"
-                "3. 核心信息提取（如项目预算、关键时间节点）。\n\n"
-                "请以纯 JSON 格式返回结果，包含 '合规性风险'、'逻辑错误'、'核心信息' 三个列表。"
-                "每个列表项包含 '描述' 和 '建议' 两个字段。"
+                "你现在是拥有十年以上经验的【甘肃省公共资源交易中心资深评标专家】。\n"
+                "请严格依照下述的《甘肃省招标投标常见错误与负面清单》：\n{gansu_rules}\n\n"
+                "以及《招标通用审查基准》：\n{general_rules}\n\n"
+                "对以下招标文件段落进行极为严苛的排雷与审查：\n"
+                "------------------\n"
+                "{document}\n"
+                "------------------\n\n"
+                "你的任务是深度分析并找出：\n"
+                "1. 合规性风险：重点关注是否触碰了甘肃省防范排他性、指定品牌、地方奖项加分要求、不合理资质等负面清单。如果触碰，必须严厉指出违反了哪一类规定。\n"
+                "2. 逻辑错误：分析履约时间是否太短、违约金是否合理、上下文数据是否前后矛盾等容易被投诉的常规错误。\n"
+                "3. 核心信息：提取出预算金额、核心技术与资质限制要求等核心关注点。\n\n"
+                "请务必仅返回纯 JSON 格式结果，必须且只能包含 '合规性风险'、'逻辑错误'、'核心信息' 这三个一级列表名称。"
+                "列表中的每个对象只包含 '描述' 和 '建议' 两个纯文本字段。若未发现问题，则将对应列表置为空 `[]`。"
             )
         )
         
         # 3. 组合链条
         chain = prompt_template | llm | JsonOutputParser()
         
-        # 4. 执行推理 (由于招标文件可能很长，目前仅截取前 3000 字符，未来可扩展为分段处理)
+        # 4. 执行推理 (增加文本输入容量至 5000 字符，以适应长文本)
         response = chain.invoke({
-            "regulations": MOCK_KNOWLEDGE_BASE["法规"],
-            "norms": MOCK_KNOWLEDGE_BASE["规范"],
-            "document": document_text[:3000] 
+            "gansu_rules": GANSU_NEGATIVE_LIST,
+            "general_rules": GENERAL_BIDDING_RULES,
+            "document": document_text[:5000] 
         })
         
         return response
