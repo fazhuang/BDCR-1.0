@@ -8,7 +8,7 @@ from langchain_core.output_parsers import JsonOutputParser
 # 加载环境变量 (API Key)
 load_dotenv()
 
-from ai_core.gansu_rules import GANSU_NEGATIVE_LIST, GENERAL_BIDDING_RULES
+from ai_core.gansu_rules import GANSU_NEGATIVE_LIST, GENERAL_BIDDING_RULES, HIGH_COMPLAINT_ZONES
 
 def analyze_document_with_ai(document_text: str) -> dict:
     """
@@ -34,17 +34,18 @@ def analyze_document_with_ai(document_text: str) -> dict:
         
         # 2. 升级提示词模板
         prompt_template = PromptTemplate(
-            input_variables=["gansu_rules", "general_rules", "document"],
+            input_variables=["gansu_rules", "general_rules", "high_complaints", "document"],
             template=(
-                "你现在是拥有十年以上经验的【甘肃省公共资源交易中心资深评标专家】。\n"
+                "你现在是拥有十年以上经验的【甘肃省公共资源交易中心资深评标专家】及【纪检监察审计员】。\n"
                 "请严格依照下述的《甘肃省招标投标常见错误与负面清单》：\n{gansu_rules}\n\n"
+                "并务必同时开启本系统独有的《甘肃省政府采购高频投诉雷达》进行核心交叉排查：\n{high_complaints}\n\n"
                 "以及《招标通用审查基准》：\n{general_rules}\n\n"
-                "对以下招标文件段落进行极为严苛的排雷与审查：\n"
+                "对以下招标文件全卷内容进行极为严苛的排雷与审查：\n"
                 "------------------\n"
                 "{document}\n"
                 "------------------\n\n"
                 "你的任务是深度分析并找出：\n"
-                "1. 合规性风险：重点关注是否触碰了甘肃省防范排他性、指定品牌、地方奖项加分要求、不合理资质等负面清单。如果触碰，必须严厉指出违反了哪一类规定。\n"
+                "1. 合规性风险（极高权重）：重点扫除隐性排他（特指量身定制的刁钻技术参数或死尺寸）、违规品牌指定、畸高或带主观黑箱的评分项、中小企业扶持条款缺失、地方奖项加分等引发废标的高频雷区。如果有任何蛛丝马迹，必须严厉重拳指出并要求修改评分表/参数表。\n"
                 "2. 逻辑错误：分析履约时间是否太短、违约金是否合理、上下文数据是否前后矛盾等容易被投诉的常规错误。\n"
                 "3. 核心信息：提取出预算金额、核心技术与资质限制要求等核心关注点。\n\n"
                 "请务必仅返回纯 JSON 格式结果，必须且只能包含 '合规性风险'、'逻辑错误'、'核心信息' 这三个一级列表名称。"
@@ -59,6 +60,7 @@ def analyze_document_with_ai(document_text: str) -> dict:
         response = chain.invoke({
             "gansu_rules": GANSU_NEGATIVE_LIST,
             "general_rules": GENERAL_BIDDING_RULES,
+            "high_complaints": HIGH_COMPLAINT_ZONES,
             "document": document_text[:80000] 
         })
         
