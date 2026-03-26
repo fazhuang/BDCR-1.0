@@ -55,11 +55,11 @@ def analyze_document_with_ai(document_text: str) -> dict:
         # 3. 组合链条
         chain = prompt_template | llm | JsonOutputParser()
         
-        # 4. 执行推理 (增加文本输入容量至 5000 字符，以适应长文本)
+        # 4. 执行推理 (解除 5000 字符限制，扩大至 80000 字符以覆盖全本核心章节)
         response = chain.invoke({
             "gansu_rules": GANSU_NEGATIVE_LIST,
             "general_rules": GENERAL_BIDDING_RULES,
-            "document": document_text[:5000] 
+            "document": document_text[:80000] 
         })
         
         return response
