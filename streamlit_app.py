@@ -75,6 +75,7 @@ st.set_page_config(page_title="系统 | AI 辅助招标及实施预警", layout=
 
 CUSTOM_CSS = """
 <style>
+    /* 移除容易导致重叠的 padding 和溢出隐藏设置，保留安全的字体和内部排版体系 */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@600;700;800&display=swap');
     
     html, body, [class*="css"] {
@@ -85,90 +86,30 @@ CUSTOM_CSS = """
         color: #00174b !important;
     }
     
-    /* 主背景背景色调整 (柔和的纸张白/极淡灰) */
+    /* 主背景色轻微区分 */
     .stApp {
-        background-color: #f9f9f9;
-        /* background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
-        background-size: 20px 20px; */
+        background-color: #f8fafc;
     }
     
-    /* 侧边栏样式优化 */
-    [data-testid="stSidebar"] {
-        background-color: #ffffff;
-        box-shadow: 2px 0 12px rgba(0, 61, 166, 0.05);
-        border-right: none;
-    }
-    
-    /* 主干按钮样式 (主CTA效果) */
-    .stButton > button {
-        background: linear-gradient(135deg, #003da6 0%, #144ce0 100%);
-        color: white !important;
-        border: none;
-        border-radius: 8px;
-        padding: 0.5rem 1rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 12px rgba(0, 61, 166, 0.15);
-    }
-    .stButton > button:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 8px 24px rgba(0, 61, 166, 0.25);
-        border: none;
-    }
-
-    /* 上传组件 (Drag & Drop Zone) 优化 */
-    [data-testid="stFileUploadDropzone"] {
-        background-color: #ffffff;
-        border: 2px dashed #b4c5ff;
-        border-radius: 12px;
-        transition: all 0.3s ease;
-    }
-    [data-testid="stFileUploadDropzone"]:hover {
-        border-color: #0052d9;
-        background-color: #f4f6fc;
-    }
-
-    /* 选项卡 Tabs 样式重构 */
-    [data-testid="stTabs"] button[role="tab"] {
-        font-weight: 600;
-        color: #434654;
-        border-bottom: 2px solid transparent;
-    }
-    [data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
-        color: #003da6;
-        border-bottom: 2px solid #003da6;
-    }
-
-    /* 结果卡片 (Expander) 样式重构 */
-    [data-testid="stExpander"] {
-        background-color: #ffffff;
-        border: none !important;
-        border-radius: 12px !important;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.03);
-        margin-bottom: 1rem;
-        padding: 0.5rem;
-        border-left: 4px solid #0052d9 !important; /* AI 左侧高亮条 */
-        overflow: hidden;
-    }
-    [data-testid="stExpander"] > div {
-        border-width: 0px !important;
-    }
-    
-    /* AI 修复建议的 Box (Markdown 引用块) */
+    /* AI 修复建议专属高亮框 (安全的 HTML 隔离区) */
     .ai-suggestion-box {
-        background-color: #f4f6fc;
-        border-radius: 8px;
-        padding: 1rem;
-        margin-top: 0.5rem;
-        border-left: 3px solid #2BA471;
-        color: #1a1c1c;
+        background-color: #f1f5f9;
+        border-radius: 6px;
+        padding: 12px 16px;
+        margin-top: 8px;
+        margin-bottom: 8px;
+        border-left: 4px solid #0052d9;
+        color: #1e293b;
+    }
+    .ai-suggestion-box strong {
+        color: #003da6;
     }
     
-    /* 状态提示框 (Alerts) 添加圆角 */
-    div.stAlert {
-        border-radius: 8px;
-        border: none;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+    /* 结果分析卡片 (Expander) 无损轻量美化 */
+    div[data-testid="stExpander"] {
+        border-left: 4px solid #003da6 !important;
+        border-radius: 8px !important;
+        box-shadow: 0 2px 12px rgba(0, 61, 166, 0.05) !important;
     }
 </style>
 """
@@ -196,7 +137,7 @@ if nav_choice == "📄 招标文件智能审查 (文本级)":
     if uploaded_file is not None:
         st.success(f"文件加载就绪：{uploaded_file.name}")
         
-        if st.button("🚀 开始 AI 智能审查"):
+        if st.button("🚀 开始 AI 智能审查", type="primary", use_container_width=True):
             with st.status(">> 正在启动 AI 审查引擎...", expanded=True) as status:
                 st.write(">> 阶段 1：正在提取分析文档文本...")
                 
