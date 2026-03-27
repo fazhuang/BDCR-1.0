@@ -79,12 +79,13 @@ def generate_pdf_reminder(project_name: str, manager: str) -> bytes:
     pdf = FPDF()
     pdf.add_page()
     
-    font_path = "/Library/Fonts/Arial Unicode.ttf"
+    # 优先加载已捆绑的开源中文字体 (应对 Streamlit Linux 容器环境)
+    font_path = os.path.join(project_root, "SimHei.ttf")
     if os.path.exists(font_path):
-        pdf.add_font("ArialUnicode", "", font_path)
-        pdf.set_font("ArialUnicode", "", 14)
+        pdf.add_font("SimHei", "", font_path)
+        pdf.set_font("SimHei", "", 14)
     else:
-        pdf.set_font("Arial", "", 14)
+        pdf.set_font("Helvetica", "", 14)
         
     pdf.cell(200, 10, text=f"催办函 - {project_name}", align="C")
     pdf.ln(15)
