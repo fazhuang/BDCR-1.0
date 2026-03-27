@@ -73,6 +73,107 @@ def generate_docx_report(report: dict, filename: str) -> bytes:
 
 st.set_page_config(page_title="系统 | AI 辅助招标及实施预警", layout="wide")
 
+CUSTOM_CSS = """
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@600;700;800&display=swap');
+    
+    html, body, [class*="css"] {
+        font-family: 'Inter', sans-serif;
+    }
+    h1, h2, h3, h4, h5, h6 {
+        font-family: 'Manrope', sans-serif !important;
+        color: #00174b !important;
+    }
+    
+    /* 主背景背景色调整 (柔和的纸张白/极淡灰) */
+    .stApp {
+        background-color: #f9f9f9;
+        /* background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+        background-size: 20px 20px; */
+    }
+    
+    /* 侧边栏样式优化 */
+    [data-testid="stSidebar"] {
+        background-color: #ffffff;
+        box-shadow: 2px 0 12px rgba(0, 61, 166, 0.05);
+        border-right: none;
+    }
+    
+    /* 主干按钮样式 (主CTA效果) */
+    .stButton > button {
+        background: linear-gradient(135deg, #003da6 0%, #144ce0 100%);
+        color: white !important;
+        border: none;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(0, 61, 166, 0.15);
+    }
+    .stButton > button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 8px 24px rgba(0, 61, 166, 0.25);
+        border: none;
+    }
+
+    /* 上传组件 (Drag & Drop Zone) 优化 */
+    [data-testid="stFileUploadDropzone"] {
+        background-color: #ffffff;
+        border: 2px dashed #b4c5ff;
+        border-radius: 12px;
+        transition: all 0.3s ease;
+    }
+    [data-testid="stFileUploadDropzone"]:hover {
+        border-color: #0052d9;
+        background-color: #f4f6fc;
+    }
+
+    /* 选项卡 Tabs 样式重构 */
+    [data-testid="stTabs"] button[role="tab"] {
+        font-weight: 600;
+        color: #434654;
+        border-bottom: 2px solid transparent;
+    }
+    [data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
+        color: #003da6;
+        border-bottom: 2px solid #003da6;
+    }
+
+    /* 结果卡片 (Expander) 样式重构 */
+    [data-testid="stExpander"] {
+        background-color: #ffffff;
+        border: none !important;
+        border-radius: 12px !important;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+        margin-bottom: 1rem;
+        padding: 0.5rem;
+        border-left: 4px solid #0052d9 !important; /* AI 左侧高亮条 */
+        overflow: hidden;
+    }
+    [data-testid="stExpander"] > div {
+        border-width: 0px !important;
+    }
+    
+    /* AI 修复建议的 Box (Markdown 引用块) */
+    .ai-suggestion-box {
+        background-color: #f4f6fc;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-top: 0.5rem;
+        border-left: 3px solid #2BA471;
+        color: #1a1c1c;
+    }
+    
+    /* 状态提示框 (Alerts) 添加圆角 */
+    div.stAlert {
+        border-radius: 8px;
+        border: none;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+    }
+</style>
+"""
+st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+
 st.sidebar.markdown("## 🧰 华招国际政企业务中台")
 nav_choice = st.sidebar.radio(
     "请选择场景模块：",
@@ -86,8 +187,8 @@ st.sidebar.info("✓ RAG 预热完毕")
 st.sidebar.info("✓ LLM 推理就绪")
 
 if nav_choice == "📄 招标文件智能审查 (文本级)":
-    st.title("🤖 智能审查大脑 - 招标文件自动诊断")
-    st.markdown("通过大语言模型深度理解和 RAG 技术，一键识别标书中的**合规性风险**与**前后逻辑冲突**。")
+    st.markdown("<h1 style='color: #003da6;'>🤖 智能审查大脑 - 招标文件自动诊断</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #434654; font-size: 1.1rem;'>通过大语言模型深度理解和 RAG 技术，一键识别标书中的合规性风险与前后逻辑冲突。</p>", unsafe_allow_html=True)
     
     # --- 主区 ---
     uploaded_file = st.file_uploader("请上传待审查的招标文件 (支持 PDF / Word / TXT 格式)", type=["pdf", "docx", "txt", "doc"])
@@ -131,7 +232,7 @@ if nav_choice == "📄 招标文件智能审查 (文本级)":
                                 st.error(f"AI 识别出 **{len(risks)}** 个合规性风险点（**触及红线，必须整改**）")
                                 for idx, risk in enumerate(risks):
                                     with st.expander(f"⚠️ 风险 {idx+1}: {risk.get('描述', '未知')}", expanded=True):
-                                        st.markdown(f"**⚡ AI 修复建议**：\n{risk.get('建议', '无')}")
+                                        st.markdown(f"<div class='ai-suggestion-box'><strong>⚡ AI 修复建议：</strong><br>{risk.get('建议', '无')}</div>", unsafe_allow_html=True)
                             else:
                                 st.success("✅ 未发现明显的合规性风险。")
         
@@ -141,7 +242,7 @@ if nav_choice == "📄 招标文件智能审查 (文本级)":
                                 st.warning(f"AI 识别出 **{len(logics)}** 处前后逻辑或数据自相矛盾")
                                 for idx, logic in enumerate(logics):
                                     with st.expander(f"📌 异常 {idx+1}: {logic.get('描述', '未知')}", expanded=True):
-                                        st.markdown(f"**⚡ AI 修复建议**：\n{logic.get('建议', '无')}")
+                                        st.markdown(f"<div class='ai-suggestion-box'><strong>⚡ AI 修复建议：</strong><br>{logic.get('建议', '无')}</div>", unsafe_allow_html=True)
                             else:
                                 st.success("✅ 未发现明显的逻辑矛盾。")
                                         
