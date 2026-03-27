@@ -8,7 +8,7 @@ from langchain_core.output_parsers import JsonOutputParser
 # 加载环境变量 (API Key)
 load_dotenv()
 
-from ai_core.gansu_rules import GANSU_NEGATIVE_LIST, GENERAL_BIDDING_RULES, HIGH_COMPLAINT_ZONES
+from ai_core.gansu_rules import GANSU_NEGATIVE_LIST, GENERAL_BIDDING_RULES, HIGH_COMPLAINT_ZONES, E_TRADING_WARNINGS
 
 def analyze_document_with_ai(document_text: str) -> dict:
     """
@@ -72,3 +72,31 @@ def analyze_document_with_ai(document_text: str) -> dict:
             "error_detail": str(e),
             "message": "AI 调用过程中发生错误，请检查 API Key 或网络连接。"
         }
+
+def operation_warning_agent(user_query: str) -> dict:
+    """处理甘肃省政府采购电子交易系统实操报错的智能预警客服"""
+    api_key = os.getenv("DEEPSEEK_API_KEY")
+    if not api_key or "YOUR_DEEPSEEK_API_KEY" in api_key:
+        return {"Diagnosis": "API未接通", "Warning": "您的系统还未绑定 AI 核心库", "ActionPlan": "请先前往 .env 配置文件完成 DEEPSEEK_API_KEY 的填写"}
+        
+    try:
+        llm = ChatOpenAI(
+            api_key=api_key, base_url="https://api.deepseek.com",
+            model="deepseek-chat", temperature=0.3
+        )
+        prompt_template = PromptTemplate(
+            input_variables=["warnings", "query"],
+            template=(
+                "你现在是【甘肃省公共资源交易政采系统高级排障专家】。\n"
+                "用户遇到如下操作问题或报错提示：\"{query}\"\n\n"
+                "参考以下绝密的《常见实操排障指南库》：\n{warnings}\n\n"
+                "请给出分析。以纯 JSON 返回结果，且必须只包含这三个确切的英文字母键：\n"
+                "1. 'Diagnosis': 诊断原因（用专业且直白的话解释到底卡在哪一步了，是什么配置导致了这种现象）。\n"
+                "2. 'Warning': 严重后果预警（明确指出如果不马上解决，是否会造成彻底的“实质性废标”或失去竞标资格）。\n"
+                "3. 'ActionPlan': 紧急抢救指南（给出分清步骤的处理对策：第1步应该点什么浏览器图标，第2步联系谁等）。"
+            )
+        )
+        chain = prompt_template | llm | JsonOutputParser()
+        return chain.invoke({"warnings": E_TRADING_WARNINGS, "query": user_query})
+    except Exception as e:
+        return {"Diagnosis": "调用大模型通信失败", "Warning": "网络异常", "ActionPlan": f"错误详情: {str(e)}"}
