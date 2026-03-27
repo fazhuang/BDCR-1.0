@@ -4,6 +4,10 @@ import sys
 import os
 from pypdf import PdfReader
 from docx import Document
+import pandas as pd
+import numpy as np
+import datetime
+from fpdf import FPDF
 
 # 确保能找到 ai_core 模块
 project_root = os.path.dirname(os.path.abspath(__file__))
@@ -71,6 +75,34 @@ def generate_docx_report(report: dict, filename: str) -> bytes:
     doc.save(bio)
     return bio.getvalue()
 
+def generate_pdf_reminder(project_name: str, manager: str) -> bytes:
+    pdf = FPDF()
+    pdf.add_page()
+    
+    font_path = "/Library/Fonts/Arial Unicode.ttf"
+    if os.path.exists(font_path):
+        pdf.add_font("ArialUnicode", "", font_path)
+        pdf.set_font("ArialUnicode", "", 14)
+    else:
+        pdf.set_font("Arial", "", 14)
+        
+    pdf.cell(200, 10, text=f"催办函 - {project_name}", align="C")
+    pdf.ln(15)
+    
+    body_text = (
+        f"尊敬的 {manager} 负责人：\n\n"
+        f"您好！\n\n"
+        f"系统检测到【{project_name}】项目的电子化进度低于 50%，"
+        f"且距离开标日期已不足 3 天。为确保项目顺利推进，请您立即跟进处理，"
+        f"加快电子化流程，并在系统内更新最新进度。\n\n"
+        f"特此提醒！\n\n"
+        f"自动预警系统\n"
+        f"生成时间: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    )
+    pdf.multi_cell(0, 10, text=body_text)
+    
+    return bytes(pdf.output())
+
 st.set_page_config(page_title="系统 | AI 辅助招标及实施预警", layout="wide")
 
 CUSTOM_CSS = """
@@ -118,7 +150,7 @@ st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 st.sidebar.markdown("## 🧰 华招国际政企业务中台")
 nav_choice = st.sidebar.radio(
     "请选择场景模块：",
-    ["📄 招标文件智能审查 (文本级)", "⚠️ 交易系统操作预警 (实操级)"]
+    ["📄 招标文件智能审查 (文本级)", "⚠️ 交易系统操作预警 (实操级)", "📊 AI 智能协作平台 (管理级)"]
 )
 
 st.sidebar.divider()
@@ -239,5 +271,87 @@ elif nav_choice == "⚠️ 交易系统操作预警 (实操级)":
                 st.markdown("### 💊 紧急抢救指南 (Action Plan)")
                 st.success(diag.get("ActionPlan", "未获取到信息"))
         else:
-            st.warning("⚠️ 兄弟，啥都没写我看什么啊！请务必键入您的问题。")
+            st.warning("⚠️ 请务必键入您的问题。")
+
+elif nav_choice == "📊 AI 智能协作平台 (管理级)":
+    st.title("🚀 招标业务线上化转型监控")
+    st.subheader("5人核心团队任务执行状态")
+
+    # 模拟数据：各项目进度
+    chart_data = pd.DataFrame(
+        np.random.randn(20, 3),
+        columns=['电子标书制作', '在线开标模拟', '系统集成测试']
+    )
+
+    # 1. 核心指标统计
+    col1, col2, col3 = st.columns(3)
+    col1.metric("当月在线招标项目", "42 个", "12%")
+    col2.metric("核心团队负荷", "85%", "-5%")
+    col3.metric("省财政厅接口通畅度", "稳定", "99.9%")
+
+    # 2. 将控制组件放入 Sidebar
+    st.sidebar.divider()
+    st.sidebar.header("管理筛选")
+    member = st.sidebar.selectbox("查看技术人员：", ["张三 (前端)", "李四 (后端)", "王五 (AI预审)", "赵六 (测试)", "孙七 (运维)"])
+    st.sidebar.write(f"当前正在查看 **{member}** 的工作流。")
+
+    # 3. 进度可视化
+    st.line_chart(chart_data)
+
+    # 4. 干系人满意度分析
+    st.divider()
+    st.subheader("🤝 干系人（业主/专家）满意度分析")
+    satisfaction = st.slider("当前项目平均满意度", 0, 100, 85)
+    if satisfaction < 60:
+        st.error("警告：满意度低于及格线，请启动『干系人参与计划』！")
+    else:
+        st.success("状态良好：继续保持沟通。")
+
+    # 5. 项目预警系统
+    st.divider()
+    st.subheader("🚨 智能项目预警系统")
+    
+    csv_path = os.path.join(project_root, "projects.csv")
+    if os.path.exists(csv_path):
+        df = pd.read_csv(csv_path)
+        
+        # 数据处理
+        df['开标日期'] = pd.to_datetime(df['开标日期'])
+        df['距离天数'] = (df['开标日期'] - pd.Timestamp('today')).dt.days
+        
+        # 判断警告条件
+        df['预警'] = (df['电子化进度'] < 50) & (df['距离天数'] <= 3)
+
+        # 样式高亮函数
+        def highlight_warning(row):
+            color = 'background-color: #ffcccc' if row['预警'] else ''
+            return [color] * len(row)
+
+        # 展示带有颜色的表格
+        st.markdown("##### 当前所有项目电子化进度监控：")
+        st.dataframe(df.style.apply(highlight_warning, axis=1), use_container_width=True)
+        
+        # 筛选出需要警告的项目生成催办函
+        warning_projects = df[df['预警']]
+        if not warning_projects.empty:
+            st.warning(f"发现 {len(warning_projects)} 个项目进度滞后且临近开标，建议立即生成发送催办函！")
+            
+            for idx, row in warning_projects.iterrows():
+                proj_name = row['项目名称']
+                mgr = row['负责人']
+                
+                pdf_bytes = generate_pdf_reminder(proj_name, mgr)
+                
+                # 使用下载按钮提供下载
+                st.download_button(
+                    label=f"📥 下载《{proj_name}》PDF催办函",
+                    data=pdf_bytes,
+                    file_name=f"{proj_name}_催办函.pdf",
+                    mime="application/pdf",
+                    key=f"dl_btn_{idx}"
+                )
+        else:
+            st.success("太棒了！目前所有项目进度均在计划范围内，或距离开标日期时间充足。")
+    else:
+        st.info("未找到 `projects.csv` 数据文件，请确保将其放置在同级目录下。")
 
